@@ -1,0 +1,62 @@
+- name: Deregister instance from GWLB Target Group
+  community.aws.elb_target:
+    target_group_arn: "{{ target_group_arn }}"
+    target_id: "{{ instance_id }}"
+    state: absent
+    region: "{{ region }}"
+
+- name: Wait for connections to drain
+  pause:
+    minutes: 2
+
+- name: Download PAN-OS version to firewall via Panorama
+  paloaltonetworks.panos.panos_software:
+    provider:
+      ip_address: "{{ panorama_host }}"
+      api_key: "{{ panorama_api_key }}"
+    version: "{{ upgrade_version }}"
+    download: true
+    sync_to_peer: false
+    target: "{{ ansible_host }}"
+    source: "{{ download_source }}"
+  register: download_status
+
+- name: Install PAN-OS version on firewall
+  paloaltonetworks.panos.panos_software:
+    provider:
+      ip_address: "{{ panorama_host }}"
+      api_key: "{{ panorama_api_key }}"
+    version: "{{ upgrade_version }}"
+    install: true
+    sync_to_peer: false
+    target: "{{ ansible_host }}"
+  when: download_status is succeeded
+  register: install_status
+
+- name: Reboot firewall
+  paloaltonetworks.panos.panos_software:
+    provider:
+      ip_address: "{{ panorama_host }}"
+      api_key: "{{ panorama_api_key }}"
+    version: "{{ upgrade_version }}"
+    restart: true
+    sync_to_peer: false
+    target: "{{ ansible_host }}"
+  when:
+    - reboot_after_upgrade
+    - install_status is succeeded
+
+- name: Wait for firewall to become reachable
+  wait_for:
+    host: "{{ ansible_host }}"
+    port: 443
+    delay: 60
+    timeout: 600
+    state: started
+
+- name: Re-register instance with GWLB Target Group
+  community.aws.elb_target:
+    target_group_arn: "{{ target_group_arn }}"
+    target_id: "{{ instance_id }}"
+    state: present
+    region: "{{ region }}"

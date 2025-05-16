@@ -1,0 +1,5 @@
+- name: Send success Teams notification
+          include_tasks: success.yml
+
+        - name: Send failure Teams notification
+          include_tasks: failure.yml

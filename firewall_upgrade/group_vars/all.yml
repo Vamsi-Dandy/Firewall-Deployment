@@ -1,0 +1,2 @@
+panorama_host: 10.128.79.135
+panorama_api_key: "{{ lookup('amazon.aws.aws_ssm', '/panwvmseries/devpanorama', region=region, decrypt=True) }}"

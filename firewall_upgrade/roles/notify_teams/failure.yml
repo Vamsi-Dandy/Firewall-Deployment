@@ -1,0 +1,23 @@
+- name: Get Teams webhook from AWS SSM
+  amazon.aws.aws_ssm:
+    name: /firewall_upgrades/teams_webhook
+    region: "{{ region }}"
+    with_decryption: true
+  register: webhook
+
+- name: Notify Teams of FAILURE
+  uri:
+    url: "{{ webhook.parameter.value }}"
+    method: POST
+    body: >
+      {
+        "@type": "MessageCard",
+        "@context": "http://schema.org/extensions",
+        "summary": "Firewall Upgrade Failed",
+        "themeColor": "ff0000",
+        "title": "❌ Firewall Upgrade Failed",
+        "text": "Firewall {{ inventory_hostname }} failed to upgrade in {{ region }}."
+      }
+    headers:
+      Content-Type: "application/json"
+    status_code: 200

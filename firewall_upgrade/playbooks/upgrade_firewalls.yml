@@ -1,0 +1,25 @@
+---
+- name: Confirm before proceeding with {{ target_phase }}
+  hosts: localhost
+  gather_facts: no
+  tasks:
+    - name: Prompt user to continue with upgrades
+      pause:
+        prompt: "Press Enter to start upgrades in {{ target_phase }}. Ctrl+C to cancel"
+
+- name: Upgrade Firewalls Phase-wise
+  hosts: "{{ target_phase | default('all') }}"
+  serial: 1
+  gather_facts: no
+  roles:
+    - upgrade_firewall
+  handlers:
+    - name: Send success Teams notification
+      include_role:
+        name: notify_teams
+      tasks_from: success
+
+    - name: Send failure Teams notification
+      include_role:
+        name: notify_teams
+      tasks_from: failure
